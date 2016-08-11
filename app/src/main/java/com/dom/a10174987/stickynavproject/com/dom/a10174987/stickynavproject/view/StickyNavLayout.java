@@ -180,9 +180,17 @@ public class StickyNavLayout extends LinearLayout {
                 break;
             case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP:
+                isDragging = false;
+                recyleVelocityTracker();
                 break;
         }
         return super.onInterceptTouchEvent(ev);
+    }
+
+    private void recyleVelocityTracker() {
+        if (velocityTracker != null) {
+            velocityTracker.recycle();
+        }
     }
 
     @Override
