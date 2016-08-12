@@ -211,8 +211,8 @@ public class StickyNavLayout extends LinearLayout {
         }
     }
 
-    private void obtainVelocityTrackerIfNotExist(){
-        if (velocityTracker == null){
+    private void obtainVelocityTrackerIfNotExist() {
+        if (velocityTracker == null) {
             velocityTracker = VelocityTracker.obtain();
         }
     }
@@ -223,6 +223,8 @@ public class StickyNavLayout extends LinearLayout {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 mLastY = y;
+                if (!scroller.isFinished())
+                    scroller.abortAnimation();
                 break;
             case MotionEvent.ACTION_MOVE:
                 int dy = y - mLastY;
@@ -230,16 +232,18 @@ public class StickyNavLayout extends LinearLayout {
                 if (Math.abs(dy) > mTouchSlop) {
                     isDragging = true;
                 }
-                if (!isTopViewHidden && isDragging) {
+                if (isDragging) {
                     scrollBy(0, -dy);
                 }
                 if (getScrollY() == mTopViewHeight && dy < 0) {
-                    event.setAction(MotionEvent.ACTION_CANCEL);
+                    event.setAction(MotionEvent.ACTION_DOWN);
                     dispatchTouchEvent(event);
-                    MotionEvent ev2 = MotionEvent.obtain(event);
-                    ev2.setAction(MotionEvent.ACTION_DOWN);
-                    return onTouchEvent(ev2);
+//                    MotionEvent ev2 = MotionEvent.obtain(event);
+//                    ev2.setAction(MotionEvent.ACTION_DOWN);
+//                    return onTouchEvent(ev2);
+                    isOuterInControl = false;
                 }
+                mLastY = y;
                 break;
             case MotionEvent.ACTION_CANCEL:
                 isDragging = false;
@@ -280,6 +284,9 @@ public class StickyNavLayout extends LinearLayout {
         }
         if (y > mTopViewHeight) {
             y = mTopViewHeight;
+        }
+        if (isDragging) {
+            super.scrollTo(x, y);
         }
         isTopViewHidden = getScrollY() == mTopViewHeight;
     }
