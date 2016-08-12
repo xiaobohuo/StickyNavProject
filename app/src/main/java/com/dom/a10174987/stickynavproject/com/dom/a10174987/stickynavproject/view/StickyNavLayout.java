@@ -61,7 +61,7 @@ public class StickyNavLayout extends LinearLayout {
         setOrientation(VERTICAL);
 
         scroller = new OverScroller(getContext());
-        velocityTracker = VelocityTracker.obtain();
+//        velocityTracker = VelocityTracker.obtain();
         mTouchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         minFlingVelocity = ViewConfiguration.get(getContext()).getScaledMinimumFlingVelocity();
         maxFlingVelocity = ViewConfiguration.get(getContext()).getScaledMaximumFlingVelocity();
@@ -170,6 +170,7 @@ public class StickyNavLayout extends LinearLayout {
                     isDragging = true;
                     if (mInnerScrollView instanceof ScrollView) {
                         if (!isTopViewHidden || (mInnerScrollView.getScrollY() == 0 && dy > 0 && isTopViewHidden)) {
+                            obtainVelocityTrackerIfNotExist();
                             velocityTracker.addMovement(ev);
                             mLastY = y;
                             return true;
@@ -178,6 +179,7 @@ public class StickyNavLayout extends LinearLayout {
                         ListView listView = (ListView) mInnerScrollView;
                         View child = listView.getChildAt(listView.getFirstVisiblePosition());
                         if (!isTopViewHidden || child != null && child.getTop() == 0 && dy > 0 && isTopViewHidden) {
+                            obtainVelocityTrackerIfNotExist();
                             velocityTracker.addMovement(ev);
                             mLastY = y;
                             return true;
@@ -185,6 +187,7 @@ public class StickyNavLayout extends LinearLayout {
                     } else if (mInnerScrollView instanceof RecyclerView) {
                         RecyclerView rv = (RecyclerView) mInnerScrollView;
                         if (!isTopViewHidden || ViewCompat.canScrollVertically(rv, -1) && dy > 0 && isTopViewHidden) {
+                            obtainVelocityTrackerIfNotExist();
                             velocityTracker.addMovement(ev);
                             mLastY = y;
                             return true;
@@ -204,6 +207,13 @@ public class StickyNavLayout extends LinearLayout {
     private void recyleVelocityTracker() {
         if (velocityTracker != null) {
             velocityTracker.recycle();
+            velocityTracker = null;
+        }
+    }
+
+    private void obtainVelocityTrackerIfNotExist(){
+        if (velocityTracker == null){
+            velocityTracker = VelocityTracker.obtain();
         }
     }
 
@@ -240,6 +250,7 @@ public class StickyNavLayout extends LinearLayout {
                 break;
             case MotionEvent.ACTION_UP:
                 isDragging = false;
+                obtainVelocityTrackerIfNotExist();
                 velocityTracker.addMovement(event);
                 velocityTracker.computeCurrentVelocity(1000, maxFlingVelocity);
                 int vy = (int) velocityTracker.getYVelocity();
