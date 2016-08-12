@@ -85,7 +85,7 @@ public class StickyNavLayout extends LinearLayout {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
         ViewGroup.LayoutParams params = mViewPager.getLayoutParams();
-        params.height = getHeight() - mIndicatorView.getMeasuredHeight();
+        params.height = getMeasuredHeight() - mIndicatorView.getMeasuredHeight();
     }
 
     @Override
@@ -166,23 +166,36 @@ public class StickyNavLayout extends LinearLayout {
             case MotionEvent.ACTION_MOVE:
                 int dy = y - mLastY;
                 getCurrentScrollView();
-
-                if (mInnerScrollView instanceof ScrollView) {
-                    if (!isTopViewHidden || (mInnerScrollView.getTop() == 0 && dy > 0 && isTopViewHidden)) {
-                        velocityTracker.addMovement(ev);
-                        return true;
+                if (Math.abs(dy) > mTouchSlop) {
+                    isDragging = true;
+                    if (mInnerScrollView instanceof ScrollView) {
+                        if (!isTopViewHidden || (mInnerScrollView.getScrollY() == 0 && dy > 0 && isTopViewHidden)) {
+                            velocityTracker.addMovement(ev);
+                            mLastY = y;
+                            return true;
+                        }
+                    } else if (mInnerScrollView instanceof ListView) {
+                        ListView listView = (ListView) mInnerScrollView;
+                        View child = listView.getChildAt(listView.getFirstVisiblePosition());
+                        if (!isTopViewHidden || child != null && child.getTop() == 0 && dy > 0 && isTopViewHidden) {
+                            velocityTracker.addMovement(ev);
+                            mLastY = y;
+                            return true;
+                        }
+                    } else if (mInnerScrollView instanceof RecyclerView) {
+                        RecyclerView rv = (RecyclerView) mInnerScrollView;
+                        if (!isTopViewHidden || ViewCompat.canScrollVertically(rv, -1) && dy > 0 && isTopViewHidden) {
+                            velocityTracker.addMovement(ev);
+                            mLastY = y;
+                            return true;
+                        }
                     }
-                } else if (mInnerScrollView instanceof ListView) {
-
-                } else if (mInnerScrollView instanceof RecyclerView) {
-
                 }
                 break;
             case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP:
                 isDragging = false;
                 recyleVelocityTracker();
-                //>>>
                 break;
         }
         return super.onInterceptTouchEvent(ev);
@@ -196,6 +209,67 @@ public class StickyNavLayout extends LinearLayout {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        int y = (int) event.getY();
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                mLastY = y;
+                break;
+            case MotionEvent.ACTION_MOVE:
+                int dy = y - mLastY;
+                getCurrentScrollView();
+                if (Math.abs(dy) > mTouchSlop) {
+                    isDragging = true;
+                }
+                if (!isTopViewHidden && isDragging) {
+                    scrollBy(0, -dy);
+                }
+                if (getScrollY() == mTopViewHeight && dy < 0) {
+                    event.setAction(MotionEvent.ACTION_CANCEL);
+                    dispatchTouchEvent(event);
+                    MotionEvent ev2 = MotionEvent.obtain(event);
+                    ev2.setAction(MotionEvent.ACTION_DOWN);
+                    return onTouchEvent(ev2);
+                }
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                isDragging = false;
+                if (!scroller.isFinished()) {
+                    scroller.abortAnimation();
+                }
+                recyleVelocityTracker();
+                break;
+            case MotionEvent.ACTION_UP:
+                isDragging = false;
+                velocityTracker.addMovement(event);
+                velocityTracker.computeCurrentVelocity(1000, maxFlingVelocity);
+                int vy = (int) velocityTracker.getYVelocity();
+                if (Math.abs(vy) > minFlingVelocity) {
+                    scroller.fling(0, getScrollY(), 0, -vy, 0, 0, 0, mTopViewHeight);
+                    invalidate();
+                }
+                recyleVelocityTracker();
+                break;
+        }
+
         return super.onTouchEvent(event);
+    }
+
+    @Override
+    public void computeScroll() {
+        if (scroller.computeScrollOffset()) {
+            scrollTo(0, scroller.getCurrY());
+            invalidate();
+        }
+    }
+
+    @Override
+    public void scrollTo(int x, int y) {
+        if (y < 0) {
+            y = 0;
+        }
+        if (y > mTopViewHeight) {
+            y = mTopViewHeight;
+        }
+        isTopViewHidden = getScrollY() == mTopViewHeight;
     }
 }
